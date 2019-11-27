@@ -1,0 +1,2 @@
+[warn] insecure HTTP request is deprecated 'http://oss.sonatype.org/content/repositories/snapshots'; switch to HTTPS or opt-in as ("Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots").withAllowInsecureProtocol(true)
+[warn] insecure HTTP request is deprecated 'http://oss.sonatype.org/content/repositories/releases'; switch to HTTPS or opt-in as ("Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases").withAllowInsecureProtocol(true)
