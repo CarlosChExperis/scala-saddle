@@ -15,6 +15,7 @@ object DevelopeStack {
   def main(args: Array[String]): Unit = {
 
 //    val start2 = Instant.now()
+//    val forecast = CsvFile("C:\\data\\forecast - copia.csv")
     val forecast = CsvFile("C:\\data\\forecast.csv")
     val cells = CsvFile("C:\\data\\cells.csv")
     val bottlenecks = CsvFile("C:\\data\\bottlenecks.csv")
@@ -38,6 +39,9 @@ object DevelopeStack {
 
     val start = Instant.now
     val frame_forecast_cells = frame_forecast.join(frame_cells, how = LeftJoin)
+
+//    val aux = CsvFile("C:\\data\\forecast - copia.csv")
+//    val aux2 = CsvParser.parse()(cells).withColIndex(0)
 
     val refactForecastCells = frame_forecast_cells.setColIndex(
         Index(
@@ -247,10 +251,8 @@ object DevelopeStack {
 
     if(operadorLogico=="*") {
       val columnFrame = df.col(variable)
-      println(columnFrame.colAt(0).mapColIndex(x=>(x.toDouble * numero.toDouble).toString))
-      resultado = columnFrame.colAt(0).mapColIndex(x=>(x.toDouble * numero.toDouble).toString).colAt(0)
-      println(resultado)
-      println(" ")
+//      resultado = columnFrame.colAt(0).mapColIndex(x=>(x.toDouble * numero.toDouble).toString).colAt(0)
+      resultado = columnFrame.colAt(0).mapValues{case t => (t.toDouble * numero.toDouble).toString}
     }
     resultado
   }
@@ -259,7 +261,9 @@ object DevelopeStack {
     var resultado: Vec[Boolean] = Vec()
 
     if(operadorLogico==">") {
-      resultado = serie.toVec.values.map(x=>x.toDouble) > serie.toVec.values.map(x=>x.toDouble)
+      val columnFrame = df.col(variable)
+//      resultado = serie.toVec.values.map(x=>x.toDouble) > serie.toVec.values.map(x=>x.toDouble)
+      resultado = columnFrame.colAt(0).toVec.values.map(x=>x.toDouble) > serie.toVec.values.map(x=>x.toDouble)
     }
     resultado
   }
