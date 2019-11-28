@@ -7,4 +7,6 @@ object StackUtils {
   var stack = Stack[String]()
   var stackSeries = Stack[Series[String, String]]()
   var stackVecBool = Stack[Vec[Boolean]]()
+  var stackCase = Stack[Vec[String]]()
+  var stackIFELSE = Stack[String]()
 }

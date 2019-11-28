@@ -1,7 +1,7 @@
 package com.breeze
 
 import java.time.Instant
-import com.breeze.StackUtils.{stack, stackSeries, stackVecBool}
+import com.breeze.StackUtils.{stack, stackSeries, stackVecBool, stackCase,stackIFELSE}
 import java.time.Duration
 import org.saddle.io.CsvImplicits._
 import org.saddle.{Frame, Index, Panel, Series, Vec}
@@ -82,30 +82,71 @@ object DevelopeStack {
     //CREO TRUE
     //    val lista_bool: List[Boolean] = List.fill(frame_bottleneck.numRows)(true)
 //    val frame_bool = Panel(Vec(lista_bool:_*))
+//    val preCleanRule = rule.replace("\r", " ")
+//      .replace(",", ".")
+//      .replace("\n", " ")
 
-    val cleanRule = rule.replace("\r", "")
+
+    val cleanRule = rule.replace("\r", " ")
       .replace(",", ".")
-      .replace("\n", "")
+      .replace("\n", " ")
       .replace("(", " ( ")
       .replace(")", " ) ")
       .replace("*", " * ")
       .replace("AND", " AND ")
       .replace("OR", " OR ")
       .replace("ENDIF", " ) ")
-      .replace("IF", " ( ( ")
-      .replace("ELSE", " ) ) OR ( ")
-      .replace("THEN", " ) AND ( ")
+//      .replace("IF", " ( ( ")
+      .replace("IF", " IF ")
+//      .replace("ELSE", " ) ) OR ( ")
+      .replace("ELSE", " ELSE ")
+//      .replace("THEN", " ) AND ( ")
+      .replace("THEN", " THEN ")
       .replace("<", " < ")
       .replace(">", " > ")
       .replace("> =", " >= ")
       .replace("< =", " <= ")
+
+      .replaceAll(" +", " ").trim
     //borrar EndIF y derivados
 
-    val listRule = cleanRule.split(" ").filter(x=>x!="")
+    val ruleIfElse = changeRuleIFELSE(cleanRule)
+    val numCase: Int = cleanRule.split("CASE").length-1
+
+    //    val listRule = cleanRule.split(" ").filter(x=>x!="")
+    var listRule: Array[String] = Array()
+
+    if (numCase==0){
+      listRule = cleanRule.split(" ")
+    }
+    if (numCase==1){
+      val caseVariable = cleanRule.replaceAll("(CASE )([A-z]*)(.*)", "$2")
+      val caseCleanRule = cleanRule
+        .replace("ENDCASE",")")
+//        .replace("CASE","( (")
+        .replace("DEFAULT",") ) OR ( ")
+        .replaceAll("(CASE )([A-z]*)( VALUE)","( ( "+s"${caseVariable}" + " = ")
+        .replaceAll("(VALUE )([A-z]*)",") ) OR ( ( "+s"${caseVariable}" + " = $2")
+      listRule = caseCleanRule.split(" ").filter(x=>x!="")
+//      println(caseCleanRule)
+    }
+    else{
+
+    }
+
+
+
+//    val numsCase: Int = listRule.filter(x=>x == "CASE").length
+//    if(numsCase == 0 ){
+//
+//    }
+//    caseModifRule(listRule)
+
 
     val listFalse: List[Boolean] = List.fill(frame_bottleneck.numRows)(false)
 //    val listFalse: List[Boolean] = List.fill(1)(false)
     val listTrue: List[Boolean] = List.fill(frame_bottleneck.numRows)(true)
+//    val listTrue: List[Boolean] = List.fill(1)(true)
     val seriesFalse = Vec(listFalse:_*)
     val seriesTrue = Vec(listTrue:_*)
 
@@ -120,7 +161,8 @@ object DevelopeStack {
 
     val listOperadoresArimeticos: List[String] = List("*", "+", "-","/")
 
-    val listaSufija2 = infijaToSufija(listRule)
+//    val listaSufija2 = infijaToSufija(listRule)
+    val listaSufija2 = infijaToSufija(ruleIfElse)
 
     val start2 = Instant.now
     for (j <- 0 until listaSufija2.length){
@@ -346,13 +388,14 @@ object DevelopeStack {
     dictTemplate
   }
 
-  def infijaToSufija(listRule: Array[String]): List[String] = {
+//  def infijaToSufija(listRule: Array[String]): List[String] = {
+  def infijaToSufija(listRule: List[String]): List[String] = {
     val lenListRule = listRule.length
     var listaSufija: List[String] = List()
     val stackProcess = stack
 
     val weightRule = Map("(" -> 1, "-" -> 8, "+" -> 8, "/" ->9, "*" ->9 ,
-      "<" -> 7, ">" -> 7, ">=" -> 7, "<=" -> 7, "=" -> 7, "AND" -> 6, "OR" -> 5, "IF" -> 4, "ELSE" -> 4,
+      "<" -> 7, ">" -> 7, ">=" -> 7, "<=" -> 7, "=" -> 7, "!=" -> 7, "AND" -> 6, "OR" -> 5, "IF" -> 4, "ELSE" -> 4,
       "CASE" -> 7, "VALUE" -> 7
     )
 
@@ -400,5 +443,82 @@ object DevelopeStack {
     listaSufija
   }
 
+  def caseModifRule(rule: Array[String]) : List[String] ={
+    rule.toList
+  }
+
+  def changeRuleIFELSE(rule: String): List[String] = {
+
+    val listPossibleItems: List[String] = List(">=", ">", "<", "=", "<=", "!=")
+
+    val rule2 = rule.split(" ").filter(x=>x !="")
+    var controlador_condicion = false
+//    var controlador = false
+    var resultado: List[String] = List()
+
+    var ifCondition: String = ""
+
+    for(i <- 0 until  rule2.length){
+      val item = rule2(i)
+
+      if (controlador_condicion == true && item != "THEN"){
+        if (item != "(" | item != ")"){
+          if(listPossibleItems.contains(item)){
+            if(item == "=") ifCondition = ifCondition + " " + "!="
+            if(item == "!=") ifCondition = ifCondition + " " + "="
+            if(item == "<") ifCondition = ifCondition + " " + ">"
+            if(item == ">") ifCondition = ifCondition + " " + "<"
+            if(item == "<=") ifCondition = ifCondition + " " + ">="
+            if(item == ">=") ifCondition = ifCondition + " " + "<="
+          }
+          else{
+            ifCondition = ifCondition + " " + item
+          }
+        }
+      }
+
+      if (item == "THEN") {
+        resultado = resultado :+ ")" :+ "AND":+ "("
+        controlador_condicion = false
+        stackIFELSE.push(ifCondition)
+        ifCondition = ""
+      }
+
+      if(item=="IF") {
+        resultado = resultado :+ "(" :+ "("
+        controlador_condicion = true
+      }
+
+      if (item == "ELSE"){
+        val topStack = stackIFELSE.top
+        val topStackSplit = topStack.split(" ")
+        stackIFELSE.pop
+        resultado = resultado :+ ")" :+ ")" :+ "OR" :+ "("
+        for (j <- 0 until topStackSplit.length){
+          resultado = resultado :+ topStackSplit(j)
+        }
+        resultado = resultado :+ "AND"
+      }
+
+      if(controlador_condicion == false){
+        if(item != "ELSE" &&  item != "IF" && item != "THEN"){
+          resultado = resultado :+ item.toString
+        }
+      }
+      else{
+        if(item != "ELSE" &&  item != "IF" && item != "THEN" && item != "(" && item != ")"){
+          resultado = resultado :+ item.toString
+        }
+      }
+    }
+    resultado.filter(x=>x!="")
+  }
+
+
 }
 
+////      .replace("IF", " ( ( ")
+//.replace("IF", " IF ")
+////      .replace("ELSE", " ) ) OR ( ")
+//.replace("ELSE", " ELSE ")
+////      .replace("THEN", " ) AND ( ")
