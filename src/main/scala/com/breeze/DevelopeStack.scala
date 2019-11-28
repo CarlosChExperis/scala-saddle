@@ -91,8 +91,10 @@ object DevelopeStack {
       .replace("*", " * ")
       .replace("AND", " AND ")
       .replace("OR", " OR ")
-      .replace("IF", " IF ")
-      .replace("ELSE", " ELSE ")
+      .replace("ENDIF", " ) ")
+      .replace("IF", " ( ( ")
+      .replace("ELSE", " ) ) OR ( ")
+      .replace("THEN", " ) AND ( ")
       .replace("<", " < ")
       .replace(">", " > ")
       .replace("> =", " >= ")
@@ -101,9 +103,21 @@ object DevelopeStack {
 
     val listRule = cleanRule.split(" ").filter(x=>x!="")
 
+    val listFalse: List[Boolean] = List.fill(frame_bottleneck.numRows)(false)
+//    val listFalse: List[Boolean] = List.fill(1)(false)
+    val listTrue: List[Boolean] = List.fill(frame_bottleneck.numRows)(true)
+    val seriesFalse = Vec(listFalse:_*)
+    val seriesTrue = Vec(listTrue:_*)
+
     val stackProcess = stack
 
-    val listPossibleItems: List[String] = List("(", ")", ">", "AND", "OR", ">=", "*", "+", "-","/", "<")
+//    val listPossibleItems: List[String] = List("(", ")", ">", "AND", "OR", ">=", "*", "+", "-","/", "<", "=", "<=")
+    val listPossibleItems: List[String] = List("(", ")",
+                                                "*", "+", "-","/",
+                                                "AND", "OR", "NOT",
+                                                ">=", ">", "<", "=", "<=", "!=",
+                                                "TRUE", "FALSE")
+
     val listOperadoresArimeticos: List[String] = List("*", "+", "-","/")
 
     val listaSufija2 = infijaToSufija(listRule)
@@ -111,67 +125,38 @@ object DevelopeStack {
     val start2 = Instant.now
     for (j <- 0 until listaSufija2.length){
       val item = listaSufija2(j)
-      println("item:" + item + " "+ j.toString)
+      println("Posicion: "+ j.toString + " item:" + item )
       if (!listPossibleItems.contains(item)){
         stack.push(item)
       }
       else {
-        if (item=="AND" | item== "OR") {
-          val serie1:Vec[Boolean] = stackVecBool.top
-          stackVecBool.pop
-          val serie2:Vec[Boolean] = stackVecBool.top
-          stackVecBool.pop
-
-          if (item=="AND") {
-            val resultadoSerie = serie1 && serie2
-            stackVecBool.push(resultadoSerie)
-          }
-          else{
-            val resultadoSerie = serie1 || serie2
-            stackVecBool.push(resultadoSerie)
-          }
+        if(item == "FALSE" | item == "TRUE"){
+          if(item=="FALSE") stackVecBool.push(seriesFalse)
+          if(item=="TRUE") stackVecBool.push(seriesTrue)
         }
         else{
-          var operando2: Double = 0
-          var operando1: String = ""
-          val firstItem = stackProcess.top
-          val boolOperando_aux: Boolean = stackProcess.length > 1
+          if (item=="AND" | item== "OR") {
+            val serie1:Vec[Boolean] = stackVecBool.top
+            stackVecBool.pop
+            val serie2:Vec[Boolean] = stackVecBool.top
+            stackVecBool.pop
 
-          if (boolOperando_aux){
-            if(firstItem.toString.replace(".","") forall Character.isDigit){
-              operando2 = stackProcess.top.toDouble
-              stackProcess.pop
-              operando1 = stackProcess.top.toString
-              stackProcess.pop
+            if (item=="AND") {
+              val resultadoSerie = serie1 && serie2
+              stackVecBool.push(resultadoSerie)
             }
             else{
-              operando1 = stackProcess.top.toString
-              stackProcess.pop
-              operando2 = stackProcess.top.toDouble
-              stackProcess.pop
-            }
-            if(listOperadoresArimeticos.contains(item)){
-              val resultado: Series[String, String] = logicaSaddleAritmeticos(refactForecastCells, item, operando1, operando2)
-              stackSeries.push(resultado)
-            }
-            else{
-              val resultado: Vec[Boolean] = logicaSaddleLogicos(refactForecastCells, item, operando1, operando2)
-//              Frame("x"->resultado).writeCsvFile("condicion1.csv")
-              stackVecBool.push(resultado)
+              val resultadoSerie = serie1 || serie2
+              stackVecBool.push(resultadoSerie)
             }
           }
           else{
-            val boolOperando1: Boolean = firstItem forall Character.isDigit
-            val boolOperando3: Boolean = stackSeries.nonEmpty
+            var operando2: Double = 0
+            var operando1: String = ""
+            val firstItem = stackProcess.top
+            val boolOperando_aux: Boolean = stackProcess.length > 1
 
-            if (!boolOperando1 && boolOperando3){
-              val topStackSerie = stackSeries.top
-              stackSeries.pop
-              val topStack = stackProcess.top
-              stackProcess.pop
-              val resultado = logicaSaddleSeries(refactForecastCells,item, topStack,topStackSerie)
-              stackVecBool.push(resultado)
-            }else{
+            if (boolOperando_aux){
               if(firstItem.toString.replace(".","") forall Character.isDigit){
                 operando2 = stackProcess.top.toDouble
                 stackProcess.pop
@@ -193,8 +178,42 @@ object DevelopeStack {
                 stackVecBool.push(resultado)
               }
             }
-          }
+            else{
+              val boolOperando1: Boolean = firstItem forall Character.isDigit
+              val boolOperando3: Boolean = stackSeries.nonEmpty
 
+              if (!boolOperando1 && boolOperando3){
+                val topStackSerie = stackSeries.top
+                stackSeries.pop
+                val topStack = stackProcess.top
+                stackProcess.pop
+                val resultado = logicaSaddleSeries(refactForecastCells,item, topStack,topStackSerie)
+                stackVecBool.push(resultado)
+              }else{
+                if(firstItem.toString.replace(".","") forall Character.isDigit){
+                  operando2 = stackProcess.top.toDouble
+                  stackProcess.pop
+                  operando1 = stackProcess.top.toString
+                  stackProcess.pop
+                }
+                else{
+                  operando1 = stackProcess.top.toString
+                  stackProcess.pop
+                  operando2 = stackProcess.top.toDouble
+                  stackProcess.pop
+                }
+                if(listOperadoresArimeticos.contains(item)){
+                  val resultado: Series[String, String] = logicaSaddleAritmeticos(refactForecastCells, item, operando1, operando2)
+                  stackSeries.push(resultado)
+                }
+                else{
+                  val resultado: Vec[Boolean] = logicaSaddleLogicos(refactForecastCells, item, operando1, operando2)
+                  stackVecBool.push(resultado)
+                }
+              }
+            }
+
+          }
         }
       }
     }
@@ -235,7 +254,7 @@ object DevelopeStack {
       val columnFrame = df.col(variable)
       resultado = columnFrame.colAt(0).toVec.map(x=>x.toDouble) < numero.toDouble
     }
-    if(operadorLogico=="==") {
+    if(operadorLogico=="=") {
       val columnFrame = df.col(variable)
       resultado = columnFrame.colAt(0).toVec.map(x=>x.toDouble) =? numero.toDouble
     }
@@ -251,8 +270,19 @@ object DevelopeStack {
 
     if(operadorLogico=="*") {
       val columnFrame = df.col(variable)
-//      resultado = columnFrame.colAt(0).mapColIndex(x=>(x.toDouble * numero.toDouble).toString).colAt(0)
       resultado = columnFrame.colAt(0).mapValues{case t => (t.toDouble * numero.toDouble).toString}
+    }
+    if(operadorLogico=="/") {
+      val columnFrame = df.col(variable)
+      resultado = columnFrame.colAt(0).mapValues{case t => (t.toDouble / numero.toDouble).toString}
+    }
+    if(operadorLogico=="-") {
+      val columnFrame = df.col(variable)
+      resultado = columnFrame.colAt(0).mapValues{case t => (t.toDouble - numero.toDouble).toString}
+    }
+    if(operadorLogico=="+") {
+      val columnFrame = df.col(variable)
+      resultado = columnFrame.colAt(0).mapValues{case t => (t.toDouble + numero.toDouble).toString}
     }
     resultado
   }
@@ -262,8 +292,27 @@ object DevelopeStack {
 
     if(operadorLogico==">") {
       val columnFrame = df.col(variable)
-//      resultado = serie.toVec.values.map(x=>x.toDouble) > serie.toVec.values.map(x=>x.toDouble)
       resultado = columnFrame.colAt(0).toVec.values.map(x=>x.toDouble) > serie.toVec.values.map(x=>x.toDouble)
+    }
+    if(operadorLogico==">=") {
+      val columnFrame = df.col(variable)
+      resultado = columnFrame.colAt(0).toVec.values.map(x=>x.toDouble) >= serie.toVec.values.map(x=>x.toDouble)
+    }
+    if(operadorLogico=="<=") {
+      val columnFrame = df.col(variable)
+      resultado = columnFrame.colAt(0).toVec.values.map(x=>x.toDouble) <= serie.toVec.values.map(x=>x.toDouble)
+    }
+    if(operadorLogico=="<") {
+      val columnFrame = df.col(variable)
+      resultado = columnFrame.colAt(0).toVec.values.map(x=>x.toDouble) < serie.toVec.values.map(x=>x.toDouble)
+    }
+    if(operadorLogico=="=") {
+      val columnFrame = df.col(variable)
+      resultado = columnFrame.colAt(0).toVec.values.map(x=>x.toDouble) =? serie.toVec.values.map(x=>x.toDouble)
+    }
+    if(operadorLogico=="!=") {
+      val columnFrame = df.col(variable)
+      resultado = columnFrame.colAt(0).toVec.values.map(x=>x.toDouble) <> serie.toVec.values.map(x=>x.toDouble)
     }
     resultado
   }
@@ -303,12 +352,14 @@ object DevelopeStack {
     val stackProcess = stack
 
     val weightRule = Map("(" -> 1, "-" -> 8, "+" -> 8, "/" ->9, "*" ->9 ,
-      //      "<" -> 4, ">" -> 4, ">=" -> 4, "<=" -> 4,"AND" -> 5, "OR" -> 5, "IF" -> 6, "ELSE" -> 6,
-      "<" -> 7, ">" -> 7, ">=" -> 7, "<=" -> 7,"AND" -> 5, "OR" -> 5, "IF" -> 4, "ELSE" -> 4,
+      "<" -> 7, ">" -> 7, ">=" -> 7, "<=" -> 7, "=" -> 7, "AND" -> 6, "OR" -> 5, "IF" -> 4, "ELSE" -> 4,
       "CASE" -> 7, "VALUE" -> 7
     )
 
-    val listPossibleItems: List[String] = List("(", ")", ">", "AND", "OR", ">=", "*", "+", "-","/", "<")
+    val listPossibleItems: List[String] = List("(", ")",
+                                              "*", "+", "-","/",
+                                              "AND", "OR", "NOT",
+                                              ">=", ">", "<", "=", "<=", "!=")
 
     for (i <- 0 until lenListRule){
       val itemRule = listRule(i).toString
