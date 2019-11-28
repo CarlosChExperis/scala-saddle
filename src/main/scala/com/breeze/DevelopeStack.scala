@@ -95,7 +95,7 @@ object DevelopeStack {
       .replace("*", " * ")
       .replace("AND", " AND ")
       .replace("OR", " OR ")
-      .replace("ENDIF", " ) ")
+      .replace("ENDIF", " ) ) ")
 //      .replace("IF", " ( ( ")
       .replace("IF", " IF ")
 //      .replace("ELSE", " ) ) OR ( ")
@@ -111,28 +111,36 @@ object DevelopeStack {
     //borrar EndIF y derivados
 
     val ruleIfElse = changeRuleIFELSE(cleanRule)
+    var listRule: List[String] = List()
+
     val numCase: Int = cleanRule.split("CASE").length-1
 
+    if (numCase ==0){
+      listRule = ruleIfElse
+    }else{
+      listRule = changeCASE(ruleIfElse)
+    }
+
     //    val listRule = cleanRule.split(" ").filter(x=>x!="")
-    var listRule: Array[String] = Array()
 
-    if (numCase==0){
-      listRule = cleanRule.split(" ")
-    }
-    if (numCase==1){
-      val caseVariable = cleanRule.replaceAll("(CASE )([A-z]*)(.*)", "$2")
-      val caseCleanRule = cleanRule
-        .replace("ENDCASE",")")
-//        .replace("CASE","( (")
-        .replace("DEFAULT",") ) OR ( ")
-        .replaceAll("(CASE )([A-z]*)( VALUE)","( ( "+s"${caseVariable}" + " = ")
-        .replaceAll("(VALUE )([A-z]*)",") ) OR ( ( "+s"${caseVariable}" + " = $2")
-      listRule = caseCleanRule.split(" ").filter(x=>x!="")
-//      println(caseCleanRule)
-    }
-    else{
 
-    }
+//    if (numCase==0){
+//      listRule = cleanRule.split(" ")
+//    }
+//    if (numCase==1){
+//      val caseVariable = cleanRule.replaceAll("(CASE )([A-z]*)(.*)", "$2")
+//      val caseCleanRule = cleanRule
+//        .replace("ENDCASE",")")
+////        .replace("CASE","( (")
+//        .replace("DEFAULT",") ) OR ( ")
+//        .replaceAll("(CASE )([A-z]*)( VALUE)","( ( "+s"${caseVariable}" + " = ")
+//        .replaceAll("(VALUE )([A-z]*)",") ) OR ( ( "+s"${caseVariable}" + " = $2")
+//      listRule = caseCleanRule.split(" ").filter(x=>x!="")
+////      println(caseCleanRule)
+//    }
+//    else{
+//
+//    }
 
 
 
@@ -161,8 +169,8 @@ object DevelopeStack {
 
     val listOperadoresArimeticos: List[String] = List("*", "+", "-","/")
 
-//    val listaSufija2 = infijaToSufija(listRule)
-    val listaSufija2 = infijaToSufija(ruleIfElse)
+    val listaSufija2 = infijaToSufija(listRule)
+//    val listaSufija2 = infijaToSufija(ruleIfElse)
 
     val start2 = Instant.now
     for (j <- 0 until listaSufija2.length){
@@ -395,8 +403,8 @@ object DevelopeStack {
     val stackProcess = stack
 
     val weightRule = Map("(" -> 1, "-" -> 8, "+" -> 8, "/" ->9, "*" ->9 ,
-      "<" -> 7, ">" -> 7, ">=" -> 7, "<=" -> 7, "=" -> 7, "!=" -> 7, "AND" -> 6, "OR" -> 5, "IF" -> 4, "ELSE" -> 4,
-      "CASE" -> 7, "VALUE" -> 7
+      "<" -> 7, ">" -> 7, ">=" -> 7, "<=" -> 7, "=" -> 7, "!=" -> 7, "AND" -> 6, "OR" -> 5
+//      , "IF" -> 4, "ELSE" -> 4, "CASE" -> 7, "VALUE" -> 7
     )
 
     val listPossibleItems: List[String] = List("(", ")",
@@ -453,7 +461,6 @@ object DevelopeStack {
 
     val rule2 = rule.split(" ").filter(x=>x !="")
     var controlador_condicion = false
-//    var controlador = false
     var resultado: List[String] = List()
 
     var ifCondition: String = ""
@@ -466,13 +473,17 @@ object DevelopeStack {
           if(listPossibleItems.contains(item)){
             if(item == "=") ifCondition = ifCondition + " " + "!="
             if(item == "!=") ifCondition = ifCondition + " " + "="
-            if(item == "<") ifCondition = ifCondition + " " + ">"
-            if(item == ">") ifCondition = ifCondition + " " + "<"
-            if(item == "<=") ifCondition = ifCondition + " " + ">="
-            if(item == ">=") ifCondition = ifCondition + " " + "<="
+            if(item == "<") ifCondition = ifCondition + " " + ">="
+            if(item == ">") ifCondition = ifCondition + " " + "<="
+            if(item == "<=") ifCondition = ifCondition + " " + ">"
+            if(item == ">=") ifCondition = ifCondition + " " + "<"
           }
           else{
-            ifCondition = ifCondition + " " + item
+            if(item == "AND") ifCondition = ifCondition + " " + "OR"
+            else {
+              if(item=="OR") ifCondition = ifCondition + " " + "AND"
+              else ifCondition = ifCondition + " " + item
+            }
           }
         }
       }
@@ -493,11 +504,11 @@ object DevelopeStack {
         val topStack = stackIFELSE.top
         val topStackSplit = topStack.split(" ")
         stackIFELSE.pop
-        resultado = resultado :+ ")" :+ ")" :+ "OR" :+ "("
+        resultado = resultado :+ ")" :+ ")" :+ "OR" :+ "(" :+ "("
         for (j <- 0 until topStackSplit.length){
           resultado = resultado :+ topStackSplit(j)
         }
-        resultado = resultado :+ "AND"
+        resultado = resultado :+ "AND" :+ "("
       }
 
       if(controlador_condicion == false){
@@ -514,11 +525,107 @@ object DevelopeStack {
     resultado.filter(x=>x!="")
   }
 
+  def changeCASE(listRule: List[String]): List[String] ={
+//    val listPossibleItems: List[String] = List(">=", ">", "<", "=", "<=", "!=")
+    var controladorCaseVariable = false
+    var resultado: List[String] = List()
+
+    var ifCondition: String = ""
+    val itemValue = "VALUE"
+    val itemCASE = "CASE"
+
+    for(i <- 0 until  listRule.length){
+      val item = listRule(i)
+
+      if(controladorCaseVariable ==false){
+        if(i!=0){
+          if((listRule(i-1) == itemValue) && (item.replace(".", "") forall Character.isDigit)){
+            if(listRule(i-3) == "CASE"){
+              val variableStack = stackCase.top
+              resultado = resultado :+ variableStack :+ "=" :+ item
+              ifCondition = ifCondition + " " + variableStack +" != " +item + " AND "
+            }
+            else{
+              val variableStack = stackCase.top
+              resultado = resultado :+ ") ":+ ") ":+ ")":+ "OR" :+"(" :+ "(" :+ variableStack :+ "=" :+ item
+              ifCondition = ifCondition + " " + variableStack +" != " +item + " AND "
+            }
+
+//
+//            val variableStack = stackCase.top
+//            resultado = resultado :+ "(" :+ "(" + variableStack :+ "=" :+ item
+//            ifCondition = ifCondition + " " + variableStack +" != " +item + " AND"
+          }
+        }
+
+        //      if (item == "VALUE") {
+        //        itemAnterior=item
+        //      }
+
+        if(item=="CASE") {
+          resultado = resultado :+ "(" :+ "("
+          controladorCaseVariable = true
+        }
+
+        if(item=="ENDCASE") {
+          resultado = resultado :+ ")"
+        }
+
+        if (item == "DEFAULT"){
+          resultado = resultado :+ ")":+ ")":+ "OR" :+ "(" :+"("
+          val listaCondicion = ifCondition.split(" ").dropRight(1)
+          for (j <- 0 until listaCondicion.length){
+            resultado = resultado :+ listaCondicion(j)
+          }
+          resultado = resultado :+ ")" :+ "AND"
+        }
+
+        if (item != "DEFAULT" && item != "CASE" && item != "VALUE" && controladorCaseVariable ==false && (listRule(i-1) != itemValue) && item!="ENDCASE"){
+          resultado = resultado :+ item
+        }
+      }
+      else{
+        if (controladorCaseVariable == true && item != "THEN"){
+          //la variable la guardo en una pila
+          stackCase.push(item)
+          controladorCaseVariable = false
+        }
+      }
+//      if (controladorCaseVariable == true && item != "THEN"){
+//        //la variable la guardo en una pila
+//        stackCase.push(item)
+//        controladorCaseVariable = false
+//      }
+
+//      if(i!=0){
+//        if((listRule(i-1) == itemAnterior) && (item.replace(".", "") forall Character.isDigit)){
+//          val variableStack = stackCase.top
+//          resultado = resultado :+ "(" :+ "(" + variableStack :+ "=" :+ item
+//          ifCondition = ifCondition + " " + variableStack +" != " +item + " AND"
+//        }
+//      }
+//
+////      if (item == "VALUE") {
+////        itemAnterior=item
+////      }
+//
+//      if(item=="CASE") {
+//        resultado = resultado :+ "(" :+ "("
+//        controladorCaseVariable = true
+//      }
+//
+//      if (item == "DEFAULT"){
+//        val listaCondicion = ifCondition.split(" ").dropRight(1)
+//        for (j <- 0 until listaCondicion.length){
+//          resultado = resultado :+ listaCondicion(j)
+//        }
+//      }
+//
+//      if (item != "DEFAULT" && item != "CASE" && item != "VALUE" && controladorCaseVariable ==false){
+//        resultado = resultado :+ item
+//      }
+    }
+    resultado.filter(x=>x!="").map(x=>x.trim)
+  }
 
 }
-
-////      .replace("IF", " ( ( ")
-//.replace("IF", " IF ")
-////      .replace("ELSE", " ) ) OR ( ")
-//.replace("ELSE", " ELSE ")
-////      .replace("THEN", " ) AND ( ")
